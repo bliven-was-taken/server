@@ -105,6 +105,9 @@ bool CPathFind::RoamAround(const position_t& point, float maxRadius, uint8 maxTu
 bool CPathFind::PathTo(const position_t& point, uint8 pathFlags, bool clear)
 {
     TracyZoneScoped;
+
+    DebugNavmesh("%s (%d) PathTo: %f %f %f", m_POwner->getName(), m_POwner->id, point.x, point.y, point.z);
+
     // don't follow a new path if the current path has script flag and new path doesn't
     if (IsFollowingPath() && (m_pathFlags & PATHFLAG_SCRIPT) && !(pathFlags & PATHFLAG_SCRIPT))
     {
@@ -116,7 +119,8 @@ bool CPathFind::PathTo(const position_t& point, uint8 pathFlags, bool clear)
         Clear();
     }
 
-    m_pathFlags = pathFlags;
+    m_destinationPoint = point;
+    m_pathFlags        = pathFlags;
 
     if (isNavMeshEnabled())
     {
@@ -535,7 +539,9 @@ bool CPathFind::FindClosestPath(const position_t& start, const position_t& end)
 
     m_points       = m_POwner->loc.zone->m_navMesh->findPath(start, end);
     m_currentPoint = 0;
-    m_points.emplace_back(pathpoint_t{ end, 0, false }); // this prevents exploits with navmesh / impassible terrain
+
+    // TODO: This is just for testing, this wallhack behaviour is very important!
+    // m_points.emplace_back(pathpoint_t{ end, 0, false }); // this prevents exploits with navmesh / impassible terrain
 
     /* this check requirement is never met as intended since m_points are never empty when mob has a path
     if (m_points.empty())
@@ -697,6 +703,9 @@ void CPathFind::Clear()
 
     m_currentTurn = 0;
     m_turnPoints.clear();
+
+    // TODO: Clear m_destinationPoint, should this be optional<>?
+    // m_destinationPoint
 }
 
 void CPathFind::AddPoints(std::vector<pathpoint_t>&& points, bool reverse)
@@ -748,8 +757,16 @@ void CPathFind::FinishedPath()
         m_currentPoint = 0;
         m_currentTurn  = 0;
     }
-    else
+    else // TODO: Is this always right?
     {
-        Clear();
+        // If we're not there yet, keep pathing until we are
+        if (distance(m_POwner->loc.p, m_destinationPoint) > 10.0f)
+        {
+            PathTo(m_destinationPoint, m_pathFlags);
+        }
+        else
+        {
+            Clear();
+        }
     }
 }
