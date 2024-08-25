@@ -35,6 +35,9 @@ zoneObject.onInitialize = function(zone)
     GetMobByID(ID.mob.SERKET):setRespawnTime(math.random(900, 10800))
 
     xi.treasure.initZone(zone)
+
+    SetServerVariable('[Escort]Wanzo', 0) -- Set escort for hire servervariable to 0
+    zone:registerTriggerArea(30, -380, 10, 398, 0, 0, 0)
 end
 
 zoneObject.onZoneIn = function(player, prevZone)
@@ -61,8 +64,8 @@ zoneObject.onTriggerAreaEnter = function(player, triggerArea)
     local gateId   = ID.npc.BANISHING_GATE_OFFSET + (9 * leverSet) -- The ID of the related gate
     local gate = GetNPCByID(gateId)
 
-    -- Logic when standing on the lever.
-    GetNPCByID(ID.npc.BANISHING_GATE_OFFSET + triggerAreaID):setAnimation(xi.anim.OPEN_DOOR)
+        -- Logic when standing on the lever.
+        GetNPCByID(ID.npc.BANISHING_GATE_OFFSET + triggerAreaID):setAnimation(xi.anim.OPEN_DOOR)
 
     -- If all 4 levers of a set are down, open related gate for varying times
     if
@@ -102,7 +105,9 @@ end
 -- However, if a lever is activated while it's related door is open, the lever will remain activated until the door closes.
 
 zoneObject.onTriggerAreaLeave = function(player, triggerArea)
-    GetNPCByID(ID.npc.BANISHING_GATE_OFFSET + triggerArea:GetTriggerAreaID()):setAnimation(xi.anim.CLOSE_DOOR)
+    if triggerArea:GetTriggerAreaID() ~= 30 then
+        GetNPCByID(ID.npc.BANISHING_GATE_OFFSET + triggerArea:GetTriggerAreaID()):setAnimation(xi.anim.CLOSE_DOOR)
+    end
 end
 
 zoneObject.onEventUpdate = function(player, csid, option, npc)
