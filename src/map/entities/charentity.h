@@ -444,7 +444,6 @@ public:
     CUContainer*     UContainer;     // Container used for universal actions -- used for trading at least despite the dedicated trading container above
     CTradeContainer* CraftContainer; // Container used for crafting actions.
 
-    CBaseEntity* PWideScanTarget;
 
     SpawnIDList_t SpawnPCList;    // list of visible characters
     SpawnIDList_t SpawnMOBList;   // list of visible monsters
@@ -455,9 +454,12 @@ public:
     void SetName(const std::string& name); // set the name of character, limited to 15 characters
 
     time_point   lastTradeInvite;
-    EntityID_t   TradePending{};  // Character ID offering trade
-    EntityID_t   InvitePending{}; // Character ID sending party invite
-    EntityID_t   BazaarID{};      // Pointer to the bazaar we are browsing.
+
+    EntityToken TradePendingEntityToken{};   // Character ID offering trade
+    EntityToken InvitePendingEntityToken{};  // Character ID sending party invite
+    EntityToken BazaarBrowingEntityToken{};  // Pointer to the bazaar we are browsing.
+    EntityToken WideScanTargetEntityToken{}; //
+
     BazaarList_t BazaarCustomers; // Array holding the IDs of the current customers
 
     std::unique_ptr<monstrosity::MonstrosityData_t> m_PMonstrosity;

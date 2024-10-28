@@ -31,8 +31,12 @@
 
 #include <cstring>
 
+// TODO: Don't use static here, use a proper unique identifier generator.
+static uint64 sUniqueIdentifier = 0;
+
 CBaseEntity::CBaseEntity()
-: id(0)
+: hash(++sUniqueIdentifier)
+, id(0)
 , targid(0)
 , objtype(ENTITYTYPE::TYPE_NONE)
 , status(STATUS_TYPE::DISAPPEAR)

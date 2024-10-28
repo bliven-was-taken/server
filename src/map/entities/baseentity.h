@@ -206,20 +206,6 @@ enum class SPAWN_ANIMATION : uint8
     SPECIAL = 1,
 };
 
-// TODO:it is possible to make this structure part of the class, instead of the current ID and Targid, but without the Clean method
-
-struct EntityID_t
-{
-    void clean()
-    {
-        id     = 0;
-        targid = 0;
-    }
-
-    uint32 id;
-    uint16 targid;
-};
-
 class CAIContainer;
 class CBattlefield;
 class CInstance;
@@ -253,6 +239,88 @@ struct location_t
 class CBaseEntity
 {
 public:
+
+    // TODO: Break out into own file.
+    class EntityToken
+    {
+    private:
+        // All zeroes is the "unset" state
+        uint64 hash   = 0;
+        uint16 zoneId = 0;
+        uint16 index  = 0;
+
+    public:
+        // if (auto* PEntity = token.resolve()) { ... }
+        auto resolve() -> CBaseEntity*
+        {
+            if (hash == 0 || zoneId == 0 || index == 0)
+            {
+                return nullptr;
+            }
+
+            // TODO: Rather than 2x stages of lookup, we could/should have a big global lookup table
+            //     : based on the hash, then we get a single 1-step O(1) lookup.
+            // NOTE: If we have a global lookup table, we also don't have to store the zoneId or index.
+            const auto* PZone = GetZone(zoneId);
+            if (!PZone)
+            {
+                // TODO: Logging
+                return nullptr;
+            }
+
+            const auto* PEntity = PZone->GetEntity(index); // NOTE: GetEntity handles instances too
+            if (!PEntity)
+            {
+                // TODO: Logging
+                return nullptr;
+            }
+
+            if (PEntity->hash != hash)
+            {
+                // TODO: Logging
+                return nullptr;
+            }
+
+            return PEntity;
+        }
+
+        // if (token == other) { ... }
+        operator==(const EntityId& other) const
+        {
+            // TODO: Warn if we are comparing 2x unset tokens.
+            // TODO: A player IS THE SAME PLAYER even if they zone, and all of their entity
+            //     : token information changes. We need to look up the player and compare
+            //     : using their id from the chars table.
+            return hash == other.hash && zoneId == other.zoneId && index == other.index;
+        }
+
+        // Unset the token:
+        // token.clear();
+        void clear()
+        {
+            hash   = 0;
+            zoneId = 0;
+            index  = 0;
+        }
+
+        // Set the token:
+        // token = entity->getEntityToken();
+        // Unset the token:
+        // token = {};
+        auto operator=(const EntityId& other) -> EntityToken&
+        {
+            hash   = other.hash;
+            zoneId = other.zoneId;
+            index  = other.index;
+            return *this;
+        }
+    };
+
+    auto getEntityToken() -> EntityToken
+    {
+        return { hash, loc.zone->id, targid };
+    }
+
     CBaseEntity();
     virtual ~CBaseEntity();
 
@@ -280,51 +348,53 @@ public:
     CBaseEntity* GetEntity(uint16 targid, uint8 filter = -1) const;
     void         SendZoneUpdate();
 
-    void   ResetLocalVars();
-    uint32 GetLocalVar(std::string var);
-    void   SetLocalVar(std::string var, uint32 val);
-    auto   GetLocalVars() -> std::map<std::string, uint32>&;
+    void ResetLocalVars();
+    auto GetLocalVar(std::string var) -> uint32;
+    void SetLocalVar(std::string var, uint32 val);
+    auto GetLocalVars() -> std::map<std::string, uint32>&;
 
     // pre-tick update
     virtual void Tick(time_point) = 0;
     // post-tick update
     virtual void PostTick() = 0;
 
-    void   SetModelId(uint16 modelId); // Set new modelid
-    uint16 GetModelId() const;         // Get the modelid
+    void   SetModelId(uint16 modelId);
+    uint16 GetModelId() const;
 
     virtual void HandleErrorMessage(std::unique_ptr<CBasicPacket>&){};
 
     bool IsDynamicEntity() const;
 
-    uint32          id;           // global identifier unique on the server
-    uint16          targid;       // local identifier unique to the zone
-    ENTITYTYPE      objtype;      // Type of entity
-    STATUS_TYPE     status;       // Entity status (different entities - different statuses)
-    uint16          m_TargID;     // the targid of the object the entity is looking at
-    std::string     name;         // Entity name
-    std::string     packetName;   // Used to override name when being sent to the client
-    look_t          look;         //
-    look_t          mainlook;     // only used if mob use changeSkin() or player /lockstyle
-    location_t      loc;          // Location of entity
-    uint8           animation;    // animation
-    uint8           animationsub; // Additional animation parameter
-    uint8           speed;        // speed of movement
-    uint8           speedsub;     // Additional movement speed parameter
-    uint8           namevis;
+    // TODO: All of these need to be better described
+    uint64          hash;           // A global and unique identifier for the entity, seperate from any zone, spawn, or other context
+    uint32          id;             // A global identifier unique on the server, built from the zoneId and the index (targid) of the entity
+    uint16          targid;         // The index of the current entity in relation to the current zone (see zone_entities for the different bandings of indexes for entity types)
+    ENTITYTYPE      objtype;        // Type of entity
+    STATUS_TYPE     status;         // Entity status (different entities - different statuses)
+    uint16          m_TargID;       // the targid of the object the entity is looking at // TODO: Rename to m_LookingAtTargID, or similar
+    std::string     name;           // Entity name // TODO: Rename to m_internalName, or similar
+    std::string     packetName;     // Used to override name when being sent to the client // TODO: Rename to m_packetName, m_clientName, or similar
+    look_t          look;           // TODO: Describe what this is
+    look_t          mainlook;       // only used if mob use changeSkin() or player /lockstyle
+    location_t      loc;            // Location of entity
+    uint8           animation;      // animation
+    uint8           animationsub;   // Additional animation parameter
+    uint8           speed;          // speed of movement
+    uint8           speedsub;       // Additional movement speed parameter
+    uint8           namevis;        // TODO: Describe what this is
     ALLEGIANCE_TYPE allegiance;     // what types of targets the entity can fight
     uint8           updatemask;     // what to update next server tick to players nearby
     bool            priorityRender; // CliPriorityFlag, will force this entity to render on clients if set. See https://github.com/atom0s/XiPackets/tree/main/world/server/0x0037 (also applies to 0x00E)
 
     bool isRenamed; // tracks if the entity's name has been overidden. Defaults to false.
 
-    bool m_bReleaseTargIDOnDisappear;
+    bool m_bReleaseTargIDOnDisappear; // TODO: This system is bad and leads to a lot of mischief and bugs. It should be removed and replaced with a better system.
 
     SPAWN_ANIMATION spawnAnimation;
 
     std::unique_ptr<CAIContainer> PAI;          // AI container
-    CBattlefield*                 PBattlefield; // pointer to battlefield (if in one)
-    CInstance*                    PInstance;
+    CBattlefield*                 PBattlefield; // pointer to battlefield (if in one) // TODO: Replace with a safer pointer or reference or optional, etc.
+    CInstance*                    PInstance;    // TODO: Replace with a safer pointer or reference or optional, etc.
 
     std::chrono::steady_clock::time_point m_nextUpdateTimer; // next time the entity should push an update packet
 

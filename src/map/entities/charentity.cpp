@@ -212,12 +212,12 @@ CCharEntity::CCharEntity()
     lastTradeInvite = {};
     TradePending.clean();
     InvitePending.clean();
+    WideScanTarget.clean();
 
     PLinkshell1     = nullptr;
     PLinkshell2     = nullptr;
     PUnityChat      = nullptr;
     PTreasurePool   = nullptr;
-    PWideScanTarget = nullptr;
 
     PAutomaton             = nullptr;
     PClaimedMob            = nullptr;

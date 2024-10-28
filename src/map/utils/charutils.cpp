@@ -7172,7 +7172,7 @@ namespace charutils
 
         PChar->TradePending.clean();
         PChar->InvitePending.clean();
-        PChar->PWideScanTarget = nullptr;
+        PChar->WideScanTarget.clean();
 
         if (PChar->animation == ANIMATION_ATTACK)
         {
