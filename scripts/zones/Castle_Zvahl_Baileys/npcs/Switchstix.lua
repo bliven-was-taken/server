@@ -959,6 +959,16 @@ local function hasRelic(player, isTrade)
     end
 end
 
+local function getRequiredItems(relicItemId)
+    local itemTable = { 0, 0, 0 }
+
+    for itemIndex = 1, #relics[relicItemId].requiredItems do
+        itemTable[itemIndex] = relics[relicItemId].requiredItems[itemIndex]
+    end
+
+    return itemTable
+end
+
 local function tradeHasRequiredCurrency(trade, currentRelic)
     local relic = relics[currentRelic]
 
@@ -1017,12 +1027,11 @@ entity.onTrade = function(player, npc, trade)
                 relic.stageNumber ~= 4 and
                 tradeHasRequiredMaterials(trade, relicId, relic.requiredItems)
             then
-                local requiredItem1 = relic.requiredItems[1] ~= nil and relic.requiredItems[1] or 0
-                local requiredItem2 = relic.requiredItems[2] ~= nil and relic.requiredItems[2] or 0
-                local requiredItem3 = relic.requiredItems[3] ~= nil and relic.requiredItems[3] or 0
+                local requiredItems = getRequiredItems(relicId)
+
                 player:setCharVar('RELIC_IN_PROGRESS', relicId)
                 player:tradeComplete()
-                player:startEvent(11, relicId, requiredItem1, requiredItem2, requiredItem3, relic.currencyType, relic.currencyAmount, 0, relic.csParam)
+                player:startEvent(11, relicId, requiredItems[1], requiredItems[2], requiredItems[3], relic.currencyType, relic.currencyAmount, 0, relic.csParam)
             end
         elseif currentRelic ~= 0 and relicId ~= currentRelic then
             player:startEvent(87)
@@ -1046,6 +1055,15 @@ entity.onTrade = function(player, npc, trade)
     end
 end
 
+-- Corresponds to not enough time has passed condition.  Correct amount passed is one greater
+-- than the below events and conquest tally is one lower.
+local triggerEventsByStage =
+{
+    [1] = 15,
+    [2] = 18,
+    [3] = 51,
+}
+
 entity.onTrigger = function(player, npc)
     local relicId = hasRelic(player, false)
     local currentRelic = player:getCharVar('RELIC_IN_PROGRESS')
@@ -1062,22 +1080,10 @@ entity.onTrigger = function(player, npc)
 
         if relicWait > os.time() then
             -- Not enough time has passed
-            if currentStage == 1 then
-                player:startEvent(15, 0, 0, 0, 0, 0, 0, 0, relic.csParam)
-            elseif currentStage == 2 then
-                player:startEvent(18, 0, 0, 0, 0, 0, 0, 0, relic.csParam)
-            elseif currentStage == 3 then
-                player:startEvent(51, 0, 0, 0, 0, 0, 0, 0, relic.csParam)
-            end
-        elseif relicWait <= os.time() then
+            player:startEvent(triggerEventsByStage[currentStage], 0, 0, 0, 0, 0, 0, 0, relic.csParam)
+        else
             -- Enough time has passed
-            if currentStage == 1 then
-                player:startEvent(16, currentRelic, 0, 0, 0, 0, 0, 0, relic.csParam)
-            elseif currentStage == 2 then
-                player:startEvent(19, currentRelic, 0, 0, 0, 0, 0, 0, relic.csParam)
-            elseif currentStage == 3 then
-                player:startEvent(52, currentRelic, 0, 0, 0, 0, 0, 0, relic.csParam)
-            end
+            player:startEvent(triggerEventsByStage[currentStage] + 1, 0, 0, 0, 0, 0, 0, 0, relic.csParam)
         end
     elseif
         currentRelic ~= 0 and
@@ -1092,19 +1098,13 @@ entity.onTrigger = function(player, npc)
         player:startEvent(10)
     elseif relicId ~= nil and relicConquest <= os.time() then
         -- Player has a relevant item and conquest tally has passed
-        local relic = relics[relicId]
-        local currentStage = relic.stageNumber
-        local requiredItem1 = relic.requiredItems[1] ~= nil and relic.requiredItems[1] or 0
-        local requiredItem2 = relic.requiredItems[2] ~= nil and relic.requiredItems[2] or 0
-        local requiredItem3 = relic.requiredItems[3] ~= nil and relic.requiredItems[3] or 0
+        local relic         = relics[relicId]
+        local currentStage  = relic.stageNumber
+        local requiredItems = getRequiredItems(relicId)
 
-        if currentStage == 1 then
-            player:startEvent(14, relicId, requiredItem1, requiredItem2, requiredItem3, 0, 0, 0, relic.csParam)
-        elseif currentStage == 2 then
-            player:startEvent(17, relicId, requiredItem1, requiredItem2, requiredItem3, 0, 0, 0, relic.csParam)
-        elseif currentStage == 3 then
-            player:startEvent(50, relicId, requiredItem1, requiredItem2, requiredItem3, 0, 0, 0, relic.csParam)
-        elseif currentStage == 4 then
+        if currentStage < 4 then
+            player:startEvent(triggerEventsByStage[currentStage] - 1, relicId, requiredItems[1], requiredItems[2], requiredItems[3], 0, 0, 0, relic.csParam)
+        else
             -- TODO: Use xi.items enum in key for the below table
             local itemToEventId =
             {
@@ -1162,11 +1162,7 @@ entity.onEventFinish = function(player, csid, option, npc)
 
         -- Picking up a finished relic stage 1>2 and 2>3.
     elseif (csid == 16 or csid == 19) and reward ~= 0 then
-        if player:getFreeSlotsCount() < 1 then
-            player:messageSpecial(ID.text.ITEM_CANNOT_BE_OBTAINED, reward + 1)
-        else
-            player:addItem(reward + 1)
-            player:messageSpecial(ID.text.ITEM_OBTAINED, reward + 1)
+        if npcUtil.giveItem(player, reward + 1) then
             player:setCharVar('RELIC_IN_PROGRESS', 0)
             player:setCharVar('RELIC_DUE_AT', 0)
             player:setCharVar('RELIC_MAKE_ANOTHER', 0)
@@ -1175,11 +1171,7 @@ entity.onEventFinish = function(player, csid, option, npc)
 
         -- Picking up a finished relic stage 3>4.
     elseif csid == 52 and reward ~= 0 then
-        if player:getFreeSlotsCount() < 1 then
-            player:messageSpecial(ID.text.ITEM_CANNOT_BE_OBTAINED, reward + 1)
-        else
-            player:addItem(reward + 1)
-            player:messageSpecial(ID.text.ITEM_OBTAINED, reward + 1)
+        if npcUtil.giveItem(player, reward + 1) then
             player:setCharVar('RELIC_IN_PROGRESS', 0)
             player:setCharVar('RELIC_DUE_AT', 0)
             player:setCharVar('RELIC_MAKE_ANOTHER', 0)
