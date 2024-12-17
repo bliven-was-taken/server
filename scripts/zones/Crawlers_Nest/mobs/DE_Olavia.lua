@@ -386,10 +386,10 @@ end
 
 entity.onMobRoam = function(mob)
     mob:setStatus(xi.status.NORMAL)
-    local progress = mob:getLocalVar('progress')
-    local escortID = '[Escort]Olavia'
+    local progress    = mob:getLocalVar('progress')
+    local escortID    = '[Escort]Olavia'
     local checkEscort = GetServerVariable(escortID)
-    local player = GetPlayerByID(mob:getLocalVar('player'))
+    local player      = GetPlayerByID(mob:getLocalVar('player'))
 
     local now = os.time()
     local expire = mob:getLocalVar('expire')
@@ -402,14 +402,11 @@ entity.onMobRoam = function(mob)
         DespawnMob(mob:getID())
         SetServerVariable(escortID, 0)
 
-        local partyObj = player:getParty()
-        if partyObj then
-            for _, v in ipairs(partyObj) do
+        if player then
+            for _, v in ipairs(player:getParty()) do
                 xi.quest.setVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 0)
             end
         end
-
-        return
     else
         local i = 0
         if next(party) ~= nil then
@@ -440,8 +437,7 @@ entity.onPath = function(mob)
         if point == #path then
             mob:setLocalVar('progress', escortProgress.COMPLETE)
 
-            local partyObj = player:getParty()
-            if partyObj then
+            if player then
                 for _, v in ipairs(player:getParty()) do
                     local prog = xi.quest.getVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog')
                     if prog == 2 then
@@ -461,8 +457,8 @@ end
 
 entity.onTrigger = function(player, mob)
     local progress = mob:getLocalVar('progress')
-    local point = mob:getLocalVar('point')
-    local escort = mob:getLocalVar('escort')
+    local point    = mob:getLocalVar('point')
+    local escort   = mob:getLocalVar('escort')
     local questVar = xi.quest.getVar(player, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog')
 
     if escort ~= nil then

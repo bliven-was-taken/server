@@ -114,11 +114,12 @@ entity.onMobRoam = function(mob)
         mob:setLocalVar('progress', escortProgress.NONE)
         DespawnMob(mob:getID())
         SetServerVariable(escortID, 0)
-        for _, v in ipairs(player:getParty()) do
-            xi.quest.setVar(v, xi.questLog.WINDURST, xi.quest.id.windurst.ESCORT_FOR_HIRE, 'Prog', 0)
-        end
 
-        return
+        if player then
+            for _, v in ipairs(player:getParty()) do
+                xi.quest.setVar(v, xi.questLog.WINDURST, xi.quest.id.windurst.ESCORT_FOR_HIRE, 'Prog', 0)
+            end
+        end
     else
         local i = 0
         if next(party) ~= nil then
@@ -148,12 +149,15 @@ entity.onPath = function(mob)
         local point = mob:getLocalVar('point')
         if point == #path then
             mob:setLocalVar('progress', escortProgress.COMPLETE)
-            for _, v in ipairs(player:getParty()) do
-                local prog = xi.quest.getVar(v, xi.questLog.WINDURST, xi.quest.id.windurst.ESCORT_FOR_HIRE, 'Prog')
-                if prog == 2 then
-                    xi.quest.setVar(v, xi.questLog.WINDURST, xi.quest.id.windurst.ESCORT_FOR_HIRE, 'Prog', 3) -- Completes the quest
-                elseif prog == 1 then
-                    xi.quest.setVar(v, xi.questLog.WINDURST, xi.quest.id.windurst.ESCORT_FOR_HIRE, 'Prog', 0) -- Resets the quest for players not in zone when escort started
+
+            if player then
+                for _, v in ipairs(player:getParty()) do
+                    local prog = xi.quest.getVar(v, xi.questLog.WINDURST, xi.quest.id.windurst.ESCORT_FOR_HIRE, 'Prog')
+                    if prog == 2 then
+                        xi.quest.setVar(v, xi.questLog.WINDURST, xi.quest.id.windurst.ESCORT_FOR_HIRE, 'Prog', 3) -- Completes the quest
+                    elseif prog == 1 then
+                        xi.quest.setVar(v, xi.questLog.WINDURST, xi.quest.id.windurst.ESCORT_FOR_HIRE, 'Prog', 0) -- Resets the quest for players not in zone when escort started
+                    end
                 end
             end
         elseif progress ~= escortProgress.COMPLETE then
