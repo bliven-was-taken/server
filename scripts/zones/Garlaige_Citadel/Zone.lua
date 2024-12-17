@@ -25,6 +25,9 @@ zoneObject.onInitialize = function(zone)
     zone:registerTriggerArea(21, -191.5, -1, 322, -188.5, 1, 324.5)
     zone:registerTriggerArea(22, -131.5, -1, 322, -129, 1, 324.5)
 
+    -- Escort Quest
+    zone:registerTriggerArea(23, -380, 10, 398, 0, 0, 0)
+
     UpdateNMSpawnPoint(ID.mob.OLD_TWO_WINGS)
     GetMobByID(ID.mob.OLD_TWO_WINGS):setRespawnTime(math.random(900, 10800))
 
@@ -37,7 +40,6 @@ zoneObject.onInitialize = function(zone)
     xi.treasure.initZone(zone)
 
     SetServerVariable('[Escort]Wanzo', 0) -- Set escort for hire servervariable to 0
-    zone:registerTriggerArea(30, -380, 10, 398, 0, 0, 0)
 end
 
 zoneObject.onZoneIn = function(player, prevZone)
@@ -60,12 +62,18 @@ end
 
 zoneObject.onTriggerAreaEnter = function(player, triggerArea)
     local triggerAreaID = triggerArea:GetTriggerAreaID()
+
+    if triggerAreaID == 23 then
+        -- This area is handled in the Escort for Hire (Windurst) quest script.
+        return
+    end
+
     local leverSet = math.floor(triggerAreaID / 9) -- The set of levers player is standing on (0, 1, 2)
     local gateId   = ID.npc.BANISHING_GATE_OFFSET + (9 * leverSet) -- The ID of the related gate
     local gate = GetNPCByID(gateId)
 
-        -- Logic when standing on the lever.
-        GetNPCByID(ID.npc.BANISHING_GATE_OFFSET + triggerAreaID):setAnimation(xi.anim.OPEN_DOOR)
+    -- Logic when standing on the lever.
+    GetNPCByID(ID.npc.BANISHING_GATE_OFFSET + triggerAreaID):setAnimation(xi.anim.OPEN_DOOR)
 
     -- If all 4 levers of a set are down, open related gate for varying times
     if
@@ -105,7 +113,7 @@ end
 -- However, if a lever is activated while it's related door is open, the lever will remain activated until the door closes.
 
 zoneObject.onTriggerAreaLeave = function(player, triggerArea)
-    if triggerArea:GetTriggerAreaID() ~= 30 then
+    if triggerArea:GetTriggerAreaID() ~= 23 then
         GetNPCByID(ID.npc.BANISHING_GATE_OFFSET + triggerArea:GetTriggerAreaID()):setAnimation(xi.anim.CLOSE_DOOR)
     end
 end

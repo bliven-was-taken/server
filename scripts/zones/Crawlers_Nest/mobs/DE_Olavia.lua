@@ -401,8 +401,12 @@ entity.onMobRoam = function(mob)
         mob:setLocalVar('progress', escortProgress.NONE)
         DespawnMob(mob:getID())
         SetServerVariable(escortID, 0)
-        for _, v in ipairs(player:getParty()) do
-            utils.setQuestVar(v, 1, 70, 'Prog', 0)
+
+        local partyObj = player:getParty()
+        if partyObj then
+            for _, v in ipairs(partyObj) do
+                xi.quest.setVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 0)
+            end
         end
 
         return
@@ -419,7 +423,7 @@ entity.onMobRoam = function(mob)
                 DespawnMob(checkEscort)
                 SetServerVariable(escortID, 0)
                 for _, v in ipairs(party) do
-                    utils.setQuestVar(v, 1, 70, 'Prog', 0)
+                    xi.quest.setVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 0)
                 end
             end
         end
@@ -428,19 +432,23 @@ end
 
 entity.onPath = function(mob)
     local progress = mob:getLocalVar('progress')
-    local escort = mob:getLocalVar('escort')
-    local player = GetPlayerByID(mob:getLocalVar('player'))
+    local escort   = mob:getLocalVar('escort')
+    local player   = GetPlayerByID(mob:getLocalVar('player'))
 
     if escort ~= nil and entity.shouldMove(mob, progress) then
         local point = mob:getLocalVar('point')
         if point == #path then
             mob:setLocalVar('progress', escortProgress.COMPLETE)
-            for _, v in ipairs(player:getParty()) do
-                local prog = utils.getQuestVar(v, 1, 70, 'Prog')
-                if prog == 2 then
-                    utils.setQuestVar(v, 1, 70, 'Prog', 3) -- Completes the quest
-                elseif prog == 1 then
-                    utils.setQuestVar(v, 1, 70, 'Prog', 0) -- Resets the quest for players not in zone when escort started
+
+            local partyObj = player:getParty()
+            if partyObj then
+                for _, v in ipairs(player:getParty()) do
+                    local prog = xi.quest.getVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog')
+                    if prog == 2 then
+                        xi.quest.setVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 3) -- Completes the quest
+                    elseif prog == 1 then
+                        xi.quest.setVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 0) -- Resets the quest for players not in zone when escort started
+                    end
                 end
             end
         elseif progress ~= escortProgress.COMPLETE then
@@ -455,7 +463,7 @@ entity.onTrigger = function(player, mob)
     local progress = mob:getLocalVar('progress')
     local point = mob:getLocalVar('point')
     local escort = mob:getLocalVar('escort')
-    local questVar = utils.getQuestVar(player, 1, 70, 'Prog')
+    local questVar = xi.quest.getVar(player, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog')
 
     if escort ~= nil then
         if progress == escortProgress.ENROUTE then
@@ -472,13 +480,13 @@ entity.onTrigger = function(player, mob)
                 mob:setLocalVar('progress', escortProgress.ENROUTE)
                 mob:setLocalVar('point', 1)
                 mob:pathThrough(path[1], xi.path.flag.WALK)
-                utils.setQuestVar(player, 1, 70, 'Prog', 2) -- Have to progress the player outside of the loop for some reason
+                xi.quest.setVar(player, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 2) -- Have to progress the player outside of the loop for some reason
                 for _, v in ipairs(player:getParty()) do
                     if v:getZone() == mob:getZone() then
-                        utils.setQuestVar(v, 1, 70, 'Prog', 2) -- Only players in zone when escort starts can progress
+                        xi.quest.setVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 2) -- Only players in zone when escort starts can progress
                         table.insert(party, v)
                     else
-                        utils.setQuestVar(v, 1, 70, 'Prog', 0) -- Sets progress back to 0 to cover any wierdness
+                        xi.quest.setVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 0) -- Sets progress back to 0 to cover any wierdness
                     end
                 end
             end
@@ -486,12 +494,12 @@ entity.onTrigger = function(player, mob)
             if questVar == 3 then
                 mob:showText(mob, ID.text.GREAT_HELP)
                 npcUtil.giveKeyItem(player, xi.ki.COMPLETION_CERTIFICATE)
-                utils.setQuestVar(player, 1, 70, 'Prog', 4)
+                xi.quest.setVar(player, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog', 4)
                 mob:isAggroable(false)
             end
 
             for _, v in ipairs(player:getParty()) do
-                if utils.getQuestVar(v, 1, 70, 'Prog') == 4 then
+                if xi.quest.getVar(v, xi.questLog.BASTOK, xi.quest.id.bastok.ESCORT_FOR_HIRE, 'Prog') == 4 then
                     mob:isAggroable(false)
                     mob:timer(60000, function(mobArg)
                         mob:showText(mob, ID.text.BEEN_A_PLEASURE)
